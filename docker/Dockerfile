@@ -1,25 +1,24 @@
-# Stage 1: Build stage
-FROM node:20-alpine AS build
-
-USER root
-
-# Skip downloading Chrome for Puppeteer (saves build time)
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-
-# Install latest Flowise globally (specific version can be set: flowise@1.0.0)
-RUN npm install -g flowise
-
-# Stage 2: Runtime stage
 FROM node:20-alpine
 
-# Install runtime dependencies
-RUN apk add --no-cache chromium git python3 py3-pip make g++ build-base cairo-dev pango-dev curl
+# Instalar dependencias del sistema necesarias
+RUN apk add --no-cache python3 make g++
 
-# Set the environment variable for Puppeteer to find Chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Instalar Flowise globalmente
+RUN npm install -g flowise
 
-# Copy Flowise from the build stage
-COPY --from=build /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=build /usr/local/bin /usr/local/bin
+# Crear y configurar el directorio de trabajo
+RUN mkdir -p /data
+WORKDIR /data
 
-ENTRYPOINT ["flowise", "start"]
+# CONFIGURACIÓN CRÍTICA PARA CLOUD
+# Forzamos a que Flowise escuche en todas las interfaces (0.0.0.0) 
+# y use el puerto que Render le asigne
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV DATABASE_PATH=/data
+
+# Exponer el puerto para el health check de Render
+EXPOSE 3000
+
+# Iniciar Flowise
+CMD ["flowise", "start"]
